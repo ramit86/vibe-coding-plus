@@ -1,4 +1,6 @@
+// src/lib/config.ts
 export const Config = {
-  proxyBase: 'http://127.0.0.1:8787',
-  llamaModel: 'qwen3:latest'
+  proxyBase: 'https://<your-proxy>.onrender.com',
+  llamaModel: 'gpt-4.1-mini',   // good price/latency
+  // or: 'gpt-4.1' for higher quality
 }
