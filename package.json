@@ -5,42 +5,30 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "build": "vite build",
+    "preview": "vite preview --port 5175",
     "server": "node server/index.mjs",
-    "dev:all": "concurrently -k -n WEB,API -c blue,magenta \"vite\" \"node server/index.mjs\""
-  },
-  "dependencies": {
-    "express": "^4.21.2",
-    "form-data": "^4.0.0",
-    "framer-motion": "^11.0.0",
-    "lucide-react": "^0.452.0",
-    "multer": "^1.4.5-lts.1",
-    "node-fetch": "^2.7.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^5.0.4",
-    "concurrently": "^9.2.1",
-    "jsdom": "^27.0.0",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.0",
-    "vitest": "^3.2.4"
-  }
-  {
-  "scripts": {
     "test": "vitest"
   },
-  "vitest": {
-    "environment": "jsdom",
-    "setupFiles": ["./src/setupTests.ts"]
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.2",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.454.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.7",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8",
+    "vitest": "^3.2.4"
   }
-}
-
 }
