@@ -1,16 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
 import {
   Mic, Square, Settings, Sparkles, FileCode2, Diff as DiffIcon, Play,
   CheckCircle2, XCircle, Gauge, Lock, TimerReset, Bot, ClipboardList,
   Search, TriangleAlert, Save, GitBranch, ChevronDown, TestTube2
 } from 'lucide-react'
 
-// === minimal in-file Config so this is self-contained ===
-import { Config } from '../lib/config'
+/** === Minimal inline Config (self-contained) ===
+ * If you prefer your shared config file, delete this block
+ * and keep:  import { Config } from '../lib/config'
+ */
+const Config = {
+  proxyBase: 'http://127.0.0.1:8787',
+  llamaModel: 'gpt-4.1-mini',
+} as const
 
-
-// === mic capture + /asr post ===
+/** === mic capture + /asr post === */
 async function captureAndTranscribe(
   cb: {
     onPartial?: (t: string) => void
@@ -39,11 +43,18 @@ async function captureAndTranscribe(
       try {
         const blob = new Blob(chunks)
         const fd = new FormData()
+        // The proxy accepts `audio`; it forwards as `file` to Whisper
         fd.append('audio', blob, 'speech.webm')
+
         const r = await fetch(`${Config.proxyBase}/asr`, { method: 'POST', body: fd })
         if (!r.ok) throw new Error(`ASR upstream ${r.status}`)
-        const data = await r.json().catch(async () => ({ text: await r.text() }))
-        const text = data?.text || ''
+        let text = ''
+        try {
+          const data = await r.json()
+          text = data?.text || ''
+        } catch {
+          text = await r.text()
+        }
         cb.onFinal(text)
       } catch (e: any) {
         cb.onError?.(e?.message || 'transcription failed')
@@ -60,7 +71,7 @@ async function captureAndTranscribe(
   }
 }
 
-// === simple OpenAI-style planner via proxy ===
+/** === simple OpenAI-style planner via proxy === */
 async function planWithLLM(task: string, files: string[]) {
   const body = {
     model: Config.llamaModel,
@@ -75,8 +86,8 @@ async function planWithLLM(task: string, files: string[]) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   })
-  if (!r.ok) throw new Error(await r.text())
-  const data = await r.json()
+  if (!r.ok) throw new Error(await r.text().catch(()=>'planner upstream error'))
+  const data = await r.json().catch(()=> ({} as any))
   const text: string = data?.text
     || data?.choices?.[0]?.message?.content
     || ''
@@ -91,19 +102,35 @@ async function planWithLLM(task: string, files: string[]) {
   }
 }
 
-// === small UI atoms ===
-function Card({ children, className = '' }) {
+/** === UI atoms with proper typing === */
+type CardProps = { children: React.ReactNode; className?: string }
+function Card({ children, className = '' }: CardProps) {
   return <div className={`rounded-2xl shadow-lg border border-gray-200 bg-white p-4 ${className}`}>{children}</div>
 }
-function Button({ children, className = '', onClick, disabled }:{children:any,className?:string,onClick?:any,disabled?:boolean}) {
+
+type ButtonProps = {
+  children: React.ReactNode
+  className?: string
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+}
+function Button({ children, className = '', onClick, disabled }: ButtonProps) {
   return <button onClick={onClick} disabled={disabled} className={`px-4 py-2 rounded-2xl shadow border text-sm hover:shadow-md transition disabled:opacity-50 ${className}`}>{children}</button>
 }
-function Chip({ icon:Icon, label, onRemove }:{icon?:any,label:string,onRemove?:()=>void}){
+
+type ChipProps = {
+  icon?: React.ComponentType<{ className?: string }>
+  label: string
+  onRemove?: () => void
+}
+function Chip({ icon: Icon, label, onRemove }: ChipProps){
   return <span className='inline-flex items-center gap-1 text-xs bg-gray-100 border rounded-full px-2 py-1 mr-2 mb-2'>
     {Icon && <Icon className='w-3 h-3'/>}{label}{onRemove && <button onClick={onRemove} className='ml-1 text-gray-500 hover:text-black'>×</button>}
   </span>
 }
-function DiffBlock({ file, before, after }:{file:string,before:string,after:string}){
+
+type DiffBlockProps = { file: string; before: string; after: string }
+function DiffBlock({ file, before, after }: DiffBlockProps){
   return <div className='text-xs font-mono bg-gray-50 rounded-xl overflow-hidden border'>
     <div className='flex items-center justify-between px-3 py-2 bg-gray-100 border-b'>
       <div className='flex items-center gap-2 text-gray-700'><DiffIcon className='w-4 h-4'/> {file}</div>
@@ -163,7 +190,7 @@ export default function VibeCodingPlus(){
   const [applyStatus, setApplyStatus] = useState<string>('')
   const [testStatus, setTestStatus] = useState<string>('')
 
-  // mic effect
+  /** mic effect */
   useEffect(()=>{
     if(!listening) return
     setPartial(''); setFinals([])
@@ -175,15 +202,15 @@ export default function VibeCodingPlus(){
     }, 4000)
   }, [listening])
 
-  // asr health poll
+  /** asr health poll — proxy implements GET /asr returning { ok: true } */
   useEffect(()=>{
     let cancelled = false
     const ping = async () => {
       try {
-        const r = await fetch(`${Config.proxyBase}/asr/health`)
-        setAsrOk(r.ok)
+        const r = await fetch(`${Config.proxyBase}/asr`, { method: 'GET' })
+        if (!cancelled) setAsrOk(r.ok)
       } catch {
-        setAsrOk(false)
+        if (!cancelled) setAsrOk(false)
       }
     }
     ping()
@@ -191,7 +218,10 @@ export default function VibeCodingPlus(){
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
-  const latency = useMemo(()=>({ asr: listening? '~rec' : (asrOk ? '~0ms' : '—'), nlu: '~250ms', codegen: approved? '~600ms' : '—' }),[listening, approved, asrOk])
+  const latency = useMemo(
+    () => ({ asr: listening? '~rec' : (asrOk ? '~0ms' : '—'), nlu: '~250ms', codegen: approved? '~600ms' : '—' }),
+    [listening, approved, asrOk]
+  )
 
   async function handlePlan(){
     try {
@@ -205,36 +235,52 @@ export default function VibeCodingPlus(){
 
   async function previewPatch(){
     setApplyStatus('')
-    const r = await fetch(`${Config.proxyBase}/patch/preview`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patches: draft.patches })
-    })
-    if (!r.ok) return setApplyStatus('Preview failed')
-    const data = await r.json()
-    setDraft(d => ({ ...d, patches: data.results }))
-    setApplyStatus('Preview refreshed from disk ✓')
+    try {
+      const r = await fetch(`${Config.proxyBase}/patch/preview`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patches: draft.patches })
+      })
+      if (!r.ok) { setApplyStatus('Preview failed'); return }
+      const data = await r.json().catch(()=> ({} as any))
+      if (Array.isArray(data?.results)) {
+        setDraft(d => ({ ...d, patches: data.results }))
+        setApplyStatus('Preview refreshed from disk ✓')
+      } else {
+        setApplyStatus('Preview returned no results')
+      }
+    } catch {
+      setApplyStatus('Preview failed')
+    }
   }
 
   async function applyPatch(){
     setApplyStatus('Applying…')
-    const r = await fetch(`${Config.proxyBase}/patch/apply`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patches: draft.patches })
-    })
-    const j = await r.json().catch(()=>null)
-    if (!r.ok || !j?.ok) return setApplyStatus('Apply failed')
-    setApplyStatus('Applied ✓')
+    try {
+      const r = await fetch(`${Config.proxyBase}/patch/apply`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patches: draft.patches })
+      })
+      const j = await r.json().catch(()=>null)
+      if (!r.ok || !j?.ok) { setApplyStatus('Apply failed'); return }
+      setApplyStatus('Applied ✓')
+    } catch {
+      setApplyStatus('Apply failed')
+    }
   }
 
   async function runTests(){
     setTestStatus('Running tests…')
-    const r = await fetch(`${Config.proxyBase}/test/run`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    })
-    const j = await r.json().catch(()=>null)
-    if (!r.ok || !j) return setTestStatus('Tests failed to run')
-    setTestStatus((j.ok ? '✅' : '❌') + ` exit ${j.code}\n` + (j.stdout || j.stderr || ''))
+    try {
+      const r = await fetch(`${Config.proxyBase}/test/run`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const j = await r.json().catch(()=>null)
+      if (!r.ok || !j) { setTestStatus('Tests failed to run'); return }
+      setTestStatus((j.ok ? '✅' : '❌') + ` exit ${j.code}\n` + (j.stdout || j.stderr || ''))
+    } catch {
+      setTestStatus('Tests failed to run')
+    }
   }
 
   return <div className='min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900'>
@@ -264,7 +310,7 @@ export default function VibeCodingPlus(){
         </div>
       </div>
       <div className='max-w-6xl mx-auto px-4 pb-2 text-xs text-gray-600'>
-        Local LLM: <span className='font-medium'>LM Studio ({Config.llamaModel})</span> via proxy
+        Local LLM: <span className='font-medium'>({Config.llamaModel})</span> via proxy
       </div>
     </div>
 
