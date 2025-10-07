@@ -33,4 +33,14 @@
     "vite": "^5.0.0",
     "vitest": "^3.2.4"
   }
+  {
+  "scripts": {
+    "test": "vitest"
+  },
+  "vitest": {
+    "environment": "jsdom",
+    "setupFiles": ["./src/setupTests.ts"]
+  }
+}
+
 }
