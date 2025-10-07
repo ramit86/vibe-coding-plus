@@ -21,4 +21,7 @@ export async function makePlan(task: string, context: string[]): Promise<Plan> {
   } catch {
     return { steps: ['Open target file', 'Implement change', 'Run unit tests', 'Review diff'], estTime: '~45s', risks: ['possible type errors'] }
   }
+  // example
+const tidy = (s: string) => s.trim().toLowerCase();
+
 }
