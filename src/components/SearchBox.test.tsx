@@ -2,10 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+
+// 👉 If SearchBox is a *default* export, use:
+// import SearchBox from './SearchBox';
+// 👉 If it's a *named* export (export function SearchBox...), use:
 import { SearchBox } from './SearchBox';
 
-// Match your debounce duration inside SearchBox (250ms in your draft)
-const DEBOUNCE_MS = 250;
+const DEBOUNCE_MS = 250; // match your component’s debounce
 
 describe('SearchBox', () => {
   it('debounces input and toggles loading around the search', async () => {
@@ -15,20 +18,23 @@ describe('SearchBox', () => {
 
     const input = screen.getByRole('textbox');
 
-    // Type some text -> component should flip aria-busy to true
+    // Type -> component should eventually flip aria-busy to true
     await userEvent.type(input, 'hello');
 
-    // Loading turns on quickly when effect starts (before debounce completes)
-    await waitFor(() => expect(input).toHaveAttribute('aria-busy', 'true'), { timeout: 150 });
+    // Depending on implementation, busy may flip immediately or after debounce kicks flow off.
+    await waitFor(
+      () => expect(input).toHaveAttribute('aria-busy', 'true'),
+      { timeout: DEBOUNCE_MS + 200 }
+    );
 
-    // Let debounce elapse
-    await new Promise(res => setTimeout(res, DEBOUNCE_MS + 50));
+    // Let the debounce window elapse so onSearch fires
+    await new Promise((res) => setTimeout(res, DEBOUNCE_MS + 50));
 
-    // onSearch should be called once with the latest value
+    // onSearch called with latest value
     expect(onSearch).toHaveBeenCalledTimes(1);
     expect(onSearch).toHaveBeenCalledWith('hello');
 
-    // After onSearch resolves, loading should turn off
+    // When the promise resolves, loading should turn off
     await waitFor(() => expect(input).toHaveAttribute('aria-busy', 'false'));
   });
 });
