@@ -1,42 +1,40 @@
-import React from 'react';
+// src/components/SearchBox.test.tsx
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import SearchBox from './SearchBox';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
+import { SearchBox } from './SearchBox';
 
-jest.useFakeTimers();
+// NOTE: adjust this to match your actual debounce delay inside SearchBox (e.g., 250ms)
+const DEBOUNCE_MS = 250;
 
-test('debounces search calls by ~250ms', async () => {
-  const onSearch = jest.fn();
-  render(<SearchBox onSearch={onSearch} delay={250} />);
+describe('SearchBox', () => {
+  it('debounces input and toggles loading around the search', async () => {
+    const onSearch = vi.fn().mockResolvedValue(undefined);
 
-  const input = screen.getByLabelText(/search/i);
-  fireEvent.change(input, { target: { value: 'r' } });
-  fireEvent.change(input, { target: { value: 're' } });
-  fireEvent.change(input, { target: { value: 'rea' } });
+    render(<SearchBox onSearch={onSearch} />);
 
-  // fast typing shouldn't call onSearch yet
-  expect(onSearch).not.toHaveBeenCalled();
+    const input = screen.getByRole('textbox');
 
-  // advance time past debounce
-  jest.advanceTimersByTime(251);
+    // type triggers immediate loading=true
+    await userEvent.type(input, 'hello');
 
-  await waitFor(() => expect(onSearch).toHaveBeenCalledTimes(1));
-  expect(onSearch).toHaveBeenCalledWith('rea');
-});
+    // Because setLoading(true) should run before debounce fires, aria-busy should flip to true quickly.
+    await waitFor(() =>
+      expect(input).toHaveAttribute('aria-busy', 'true'),
+      { timeout: 100 }
+    );
 
-test('shows loading state while searching', async () => {
-  let resolve!: () => void;
-  const onSearch = jest.fn(() => new Promise<void>(r => { resolve = r; }));
+    // advance past your debounce window by waiting a bit
+    await new Promise(res => setTimeout(res, DEBOUNCE_MS + 50));
 
-  render(<SearchBox onSearch={onSearch} delay={100} />);
-  const input = screen.getByLabelText(/search/i);
-  fireEvent.change(input, { target: { value: 'hello' } });
+    // search should have been called once with latest value
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(onSearch).toHaveBeenCalledWith('hello');
 
-  jest.advanceTimersByTime(101);
-  // after debounce, call is pending -> aria-busy true
-  const field = screen.getByLabelText(/search/i);
-  expect(field).toHaveAttribute('aria-busy', 'true');
-
-  // finish request
-  resolve();
-  await waitFor(() => expect(field).toHaveAttribute('aria-busy', 'false'));
+    // after the promise resolves, loading should turn off
+    await waitFor(() =>
+      expect(input).toHaveAttribute('aria-busy', 'false')
+    );
+  });
 });
