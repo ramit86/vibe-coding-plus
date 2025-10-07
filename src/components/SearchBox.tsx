@@ -1,3 +1,4 @@
+// src/components/SearchBox.tsx
 import React, { useEffect, useState } from 'react';
 
 type Props = {
@@ -21,12 +22,8 @@ function SearchBoxImpl({ onSearch, debounceMs = 250 }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-
     const run = async () => {
-      // Don’t fire on empty (keeps test predictable)
       if (!dq.trim()) return;
-
-      // flip busy while search in flight
       setLoading(true);
       try {
         await Promise.resolve(onSearch(dq));
@@ -34,13 +31,8 @@ function SearchBoxImpl({ onSearch, debounceMs = 250 }: Props) {
         if (!cancelled) setLoading(false);
       }
     };
-
-    // Start async flow after debounce
     run();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [dq, onSearch]);
 
   return (
@@ -56,7 +48,6 @@ function SearchBoxImpl({ onSearch, debounceMs = 250 }: Props) {
   );
 }
 
-// Expose both named and default to match any import style in tests
 export function SearchBox(props: Props) {
   return <SearchBoxImpl {...props} />;
 }
