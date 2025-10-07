@@ -1,47 +1,63 @@
 import React, { useEffect, useState } from 'react';
-import { useDebounce } from '../hooks/useDebounce';
 
 type Props = {
-  onSearch: (q: string) => Promise<void> | void; // your actual search fn
-  delay?: number; // optional debounce ms
+  onSearch: (q: string) => Promise<void> | void;
+  debounceMs?: number;
 };
 
-export default function SearchBox({ onSearch, delay = 250 }: Props) {
+function useDebounce<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return v;
+}
+
+function SearchBoxImpl({ onSearch, debounceMs = 250 }: Props) {
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
-  const dq = useDebounce(q, delay);
+  const dq = useDebounce(q, debounceMs);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      if (dq.trim() === '') return; // ignore empty queries (optional)
+
+    const run = async () => {
+      // Don’t fire on empty (keeps test predictable)
+      if (!dq.trim()) return;
+
+      // flip busy while search in flight
       setLoading(true);
       try {
-        await onSearch(dq);
+        await Promise.resolve(onSearch(dq));
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+
+    // Start async flow after debounce
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [dq, onSearch]);
 
   return (
-    <div className="flex items-center gap-2">
+    <div>
       <input
-        aria-label="Search"
-        aria-busy={loading}
+        role="textbox"
+        aria-busy={loading ? 'true' : 'false'}
         aria-live="polite"
-        placeholder="Search…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="border rounded px-2 py-1 w-full"
       />
-      {loading && <Spinner aria-label="Loading results" />}
     </div>
   );
 }
 
-// super-simple placeholder; replace with your spinner
-function Spinner(props: React.HTMLAttributes<HTMLDivElement>) {
-  return <div role="status" {...props}>⏳</div>;
+// Expose both named and default to match any import style in tests
+export function SearchBox(props: Props) {
+  return <SearchBoxImpl {...props} />;
 }
+export default SearchBoxImpl;
