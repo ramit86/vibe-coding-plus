@@ -11,6 +11,18 @@ const WHISPER_HTTP = process.env.WHISPER_HTTP
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(s=>s.trim()).filter(Boolean)
 const REQUIRE_API_KEY = !!(process.env.API_KEY && process.env.API_KEY.length > 0)
 const PUBLIC_BUILD = process.env.PUBLIC_BUILD === '1'
+// simple health for the proxy itself (optional if you already have /health)
+app.get('/health', (req, res) => {
+  res.json({ ok: true })
+})
+
+// make GET /asr return OK so the UI can detect ASR is available
+app.get('/asr', (req, res) => {
+  res.json({
+    ok: true,
+    whisper: process.env.WHISPER_HTTP || null
+  })
+})
 
 app.use((req, res, next) => {
   const origin = req.headers.origin || ''
