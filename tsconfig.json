@@ -1,11 +1,8 @@
 {
   "compilerOptions": {
-    /* Lang & JSX */
     "target": "ES2020",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-
-    /* Module/Resolution (Vite-friendly) */
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
@@ -13,20 +10,9 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "noEmit": true,
-
-    /* Strictness & Checks */
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-
-    /* Paths (optional; keep if you use @/* aliases)
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    */
-
-    /* ✅ Vitest + RTL globals so `describe/it/expect` & jest-dom work */
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src", "vite.config.ts", "vitest.config.ts", "src/setupTests.ts"],
