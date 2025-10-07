@@ -37,4 +37,14 @@ describe('SearchBox', () => {
     // When the promise resolves, loading should turn off
     await waitFor(() => expect(input).toHaveAttribute('aria-busy', 'false'));
   });
+  // append to src/components/SearchBox.test.tsx
+it('does not call onSearch for empty input', async () => {
+  const onSearch = vi.fn().mockResolvedValue(undefined);
+  render(<SearchBox onSearch={onSearch} />);
+  const input = screen.getByRole('textbox');
+  await userEvent.type(input, '   '); // just spaces
+  await new Promise((r) => setTimeout(r, 300)); // > debounce
+  expect(onSearch).not.toHaveBeenCalled();
+});
+
 });
