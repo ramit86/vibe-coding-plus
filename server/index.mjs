@@ -11,6 +11,22 @@ const WHISPER_HTTP = process.env.WHISPER_HTTP
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(s=>s.trim()).filter(Boolean)
 const REQUIRE_API_KEY = !!(process.env.API_KEY && process.env.API_KEY.length > 0)
 const PUBLIC_BUILD = process.env.PUBLIC_BUILD === '1'
+// server/index.mjs
+const ALLOWED = new Set((process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean));
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // simple health for the proxy itself (optional if you already have /health)
 app.get('/health', (req, res) => {
   res.json({ ok: true })
